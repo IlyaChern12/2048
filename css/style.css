@@ -1,122 +1,190 @@
+* { box-sizing: border-box; }
+
 body {
-  font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
-  background: #faf8ef;
+  font-family: sans-serif;
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
+  background: #faf8ef;
   margin: 0;
+  padding: 40px 0;
 }
 
-.game-container {
+#app {
+  width: 450px; /* ширина под большие плитки */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* --- Верхний блок --- */
+.top-bar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* логотип | счёт | кнопка */
+  align-items: center;
+  margin-bottom: 15px; /* одинаковый отступ с нижними кнопками */
+  column-gap: 10px;
+}
+
+.logo {
+  font-size: 45px;
+  font-weight: bold;
+  color: #776e65;
+  padding-left: 10px; /* небольшой отступ слева */
+}
+
+#score-container {
+  color: #000;
+  font-size: 20px;
+  font-weight: bold;
   text-align: center;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.score-box {
+#show-leaderboard {
   background: #bbada0;
-  color: #fff;
-  padding: 10px;
-  border-radius: 3px;
-  margin: 5px;
-  min-width: 60px;
-}
-
-.buttons button {
-  background: #8f7a66;
-  color: #fff;
+  color: #f9f6f2;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: bold;
   border: none;
-  padding: 10px 14px;
-  border-radius: 3px;
-  margin: 2px;
   cursor: pointer;
-  transition: background 0.2s;
-}
-.buttons button:hover {
-  background: #9f8b78;
+  height: 45px;
 }
 
-.grid {
+#show-leaderboard:hover { background: #a89b8e; }
+
+/* --- Игровое поле --- */
+#game-container {
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(4, 80px);
-  grid-template-rows: repeat(4, 80px);
+  grid-template-columns: repeat(4, 100px);
+  grid-template-rows: repeat(4, 100px);
   gap: 10px;
   background: #bbada0;
   padding: 10px;
-  border-radius: 6px;
+  border-radius: 5px;
+  margin-bottom: 0; /* уменьшено до нуля */
   position: relative;
 }
 
 .cell {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   background: #cdc1b4;
-  border-radius: 4px;
+  border-radius: 5px;
+}
+
+.tile {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 5px;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 24px;
   font-weight: bold;
-  color: #776e65;
-  transition: transform 0.18s ease-in-out, background 0.2s, font-size 0.2s;
+  font-size: 28px;
+  transition: transform 0.3s ease; /* плавная анимация */
 }
 
-.cell.new {
-  animation: pop 0.2s ease;
-}
+/* Цвета плиток */
+.tile-2 { background: #eee4da; color: #776e65; }
+.tile-4 { background: #ede0c8; color: #776e65; }
+.tile-8 { background: #f2b179; color: #f9f6f2; }
+.tile-16 { background: #f59563; color: #f9f6f2; }
+.tile-32 { background: #f67c5f; color: #f9f6f2; }
+.tile-64 { background: #f65e3b; color: #f9f6f2; }
+.tile-128 { background: #edcf72; color: #f9f6f2; font-size: 24px; }
+.tile-256 { background: #edcc61; color: #f9f6f2; font-size: 24px; }
+.tile-512 { background: #edc850; color: #f9f6f2; font-size: 24px; }
+.tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 22px; }
+.tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 22px; }
 
-@keyframes pop {
-  0% { transform: scale(0.5); opacity: 0.6; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.cell[data-value="2"] { background: #eee4da; }
-.cell[data-value="4"] { background: #ede0c8; }
-.cell[data-value="8"] { background: #f2b179; color: #f9f6f2; }
-.cell[data-value="16"] { background: #f59563; color: #f9f6f2; }
-.cell[data-value="32"] { background: #f67c5f; color: #f9f6f2; }
-.cell[data-value="64"] { background: #f65e3b; color: #f9f6f2; }
-.cell[data-value="128"] { background: #edcf72; color: #f9f6f2; }
-.cell[data-value="256"] { background: #edcc61; color: #f9f6f2; }
-.cell[data-value="512"] { background: #edc850; color: #f9f6f2; }
-.cell[data-value="1024"] { background: #edc53f; color: #f9f6f2; }
-.cell[data-value="2048"] { background: #edc22e; color: #f9f6f2; }
-
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
+/* --- Нижние кнопки --- */
+.bottom-buttons {
+  width: 100%;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
+  justify-content: space-between;
+  margin-top: 15px; /* визуально совпадает с отступом сверху */
 }
 
-.modal {
-  background: #f9f6f2;
-  padding: 20px;
-  border-radius: 8px;
-  text-align: center;
-  min-width: 260px;
-}
-
-.modal h2 {
-  margin-top: 0;
-}
-
-.modal button {
-  margin-top: 10px;
-  padding: 8px 16px;
+.bottom-buttons button {
+  background: #bbada0;
+  color: #f9f6f2;
+  padding: 10px 25px;
+  border-radius: 6px;
   border: none;
-  background: #8f7a66;
-  color: white;
-  border-radius: 4px;
   cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.bottom-buttons button:hover { background: #a89b8e; }
+
+/* --- Модалки --- */
+.modal {
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background: rgba(0,0,0,0.4); /* слегка затемнённый фон */
+  display:flex; /* базовое отображение */
+  justify-content:center;
+  align-items:center;
+  z-index:10;
+}
+
+.modal.hidden {
+  display: none; /* скрываем только через hidden */
+}
+
+.modal-content {
+  background: #f9f6f2;
+  padding: 25px 30px;
+  border-radius: 10px;
+  text-align:center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  min-width: 280px;
+  max-width: 90%;
+}
+
+.modal-content p {
+  font-size: 18px;
+  color: #776e65;
+  margin-bottom: 15px;
+}
+
+.modal-content input {
+  padding: 8px 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-bottom: 15px;
+  width: 100%;
+  max-width: 250px;
+}
+
+.modal-content button {
+  background: #bbada0;
+  color: #f9f6f2;
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s ease;
+}
+
+.modal-content button:hover {
+  background: #a89b8e;
+}
+
+/* Анимация слияния */
+.tile.merge {
+  transform: scale(1.15);
+  transition: transform 0.15s ease;
 }
