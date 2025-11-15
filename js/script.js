@@ -12,6 +12,8 @@ let scoreEl;
 let gameOverModal, gameOverMessage, playerNameInput, saveScoreBtn, restartBtn;
 let leaderboardModal, leaderboardTable, closeLeaderboardBtn;
 
+let isMoving = false;
+
 /* отрисовка интерфейса */
 function createLayout() {
     const app = document.getElementById('app');
@@ -369,7 +371,8 @@ function showGameOver() {
 
 /* движение плиток */
 function move(dir) {
-    if (gameEnded) return;
+    if (gameEnded || isMoving) return; // блокируем если игра окончена или анимация идёт
+    isMoving = true;
 
     saveHistory();
     let moved = false;
@@ -392,32 +395,30 @@ function move(dir) {
                 grid[nx][ny] = null;
                 nx = tx; ny = ty; moved = true;
             } else if (target.value === t.value && !merged[tx][ty]) {
-                if (!gameEnded) {
-                    grid[tx][ty] = t;
-                    grid[nx][ny] = null;
+                grid[tx][ty] = t;
+                grid[nx][ny] = null;
 
-                    const targetInner = target.element.querySelector('.tile-inner');
-                    const tInner = t.element.querySelector('.tile-inner');
+                const targetInner = target.element.querySelector('.tile-inner');
+                const tInner = t.element.querySelector('.tile-inner');
 
-                    const anim = new Promise(resolve => {
-                        targetInner.classList.add("fade-out");
-                        targetInner.addEventListener("transitionend", () => {
-                            target.element.remove();
-                            t.value *= 2;
-                            score += t.value;
-                            scoreEl.textContent = `Счёт: ${score}`;
-                            updateTile(t);
+                const anim = new Promise(resolve => {
+                    targetInner.classList.add("fade-out");
+                    targetInner.addEventListener("transitionend", () => {
+                        target.element.remove();
+                        t.value *= 2;
+                        score += t.value;
+                        scoreEl.textContent = `Счёт: ${score}`;
+                        updateTile(t);
 
-                            tInner.style.transform = "scale(0.93)";
-                            setTimeout(() => { tInner.style.transform = ""; tInner.classList.add("pulse"); }, 30);
-                            setTimeout(() => tInner.classList.remove("pulse"), 300);
-                            resolve();
-                        }, { once: true });
-                    });
+                        tInner.style.transform = "scale(0.93)";
+                        setTimeout(() => { tInner.style.transform = ""; tInner.classList.add("pulse"); }, 30);
+                        setTimeout(() => tInner.classList.remove("pulse"), 300);
+                        resolve();
+                    }, { once: true });
+                });
 
-                    animations.push(anim);
-                    merged[tx][ty] = true;
-                }
+                animations.push(anim);
+                merged[tx][ty] = true;
                 nx = tx; ny = ty; moved = true;
                 break;
             } else break;
@@ -435,17 +436,19 @@ function move(dir) {
 
     if (moved) addRandomTile();
 
-    // Проверка конца игры
-    if (animations.length > 0) {
-        Promise.all(animations).then(() => {
-            if (isGameOver()) showGameOver();
-            if (moved) saveGameState();
-        });
-    } else {
+    const finishMove = () => {
         if (isGameOver()) showGameOver();
         if (moved) saveGameState();
+        isMoving = false; // снимаем блокировку после завершения
+    };
+
+    if (animations.length > 0) {
+        Promise.all(animations).then(finishMove);
+    } else {
+        finishMove();
     }
 }
+
 
 
 /* управление клавишами */
