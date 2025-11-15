@@ -359,40 +359,41 @@ function move(dir) {
                 ny = ty;
                 moved = true;
             } else if (target.value === t.value && !merged[tx][ty]) {
-                // новое значение
-                t.value *= 2;
-                score += t.value;
-                scoreEl.textContent = `Счёт: ${score}`;
-
-                // обновляем классы цвета на внешней плитке
-                t.element.className = `tile tile-${t.value}`;
-
-                // обновляем текст
-                const inner = t.element.querySelector('.tile-inner');
-                inner.textContent = t.value;
-
-                inner.style.transform = "scale(0.93)";
-                setTimeout(() => {
-                    inner.style.transform = "";
-                    inner.classList.add("pulse");
-                }, 30);
-
-                // пульсация новой плитки
-                inner.classList.add("pulse");
-                setTimeout(() => inner.classList.remove("pulse"), 300);
-
-                // исчезновение старой поглощённой плитки
                 const targetInner = target.element.querySelector('.tile-inner');
+                const tInner = t.element.querySelector('.tile-inner');
+
+                // Верхняя плитка движется к нижней (позиция уже обновлена далее)
+                grid[tx][ty] = t;
+                grid[nx][ny] = null;
+
+                // Плавное исчезновение нижней плитки
                 targetInner.classList.add("fade-out");
                 targetInner.addEventListener("transitionend", () => {
                     target.element.remove();
+
+                    // Обновляем значение верхней плитки
+                    t.value *= 2;
+                    score += t.value;
+                    scoreEl.textContent = `Счёт: ${score}`;
+
+                    // Обновляем класс цвета плитки
+                    t.element.className = `tile tile-${t.value}`;
+
+                    // Обновляем текст
+                    tInner.textContent = t.value;
+
+                    // Пульсация новой плитки
+                    tInner.style.transform = "scale(0.93)";
+                    setTimeout(() => {
+                        tInner.style.transform = "";
+                        tInner.classList.add("pulse");
+                    }, 30);
+
+                    setTimeout(() => tInner.classList.remove("pulse"), 300);
+
                 }, { once: true });
 
-                // обновляем сетку
-                grid[tx][ty] = t;
-                grid[nx][ny] = null;
                 merged[tx][ty] = true;
-
                 nx = tx;
                 ny = ty;
                 moved = true;
