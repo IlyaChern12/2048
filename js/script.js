@@ -240,6 +240,7 @@ function addRandomTile() {
     const { x, y } = empty[Math.floor(Math.random() * empty.length)];
     const tile = createTile(Math.random() < 0.9 ? 2 : 4, x, y);
     grid[x][y] = tile;
+    saveGameState();
 }
 
 /* сохраняем ход для undo */
@@ -398,6 +399,7 @@ function move(dir) {
             for (let i = SIZE - 2; i >= 0; i--) slide(i, j, 1, 0);
 
     if (moved) {
+        saveGameState();
         requestAnimationFrame(() => {
             addRandomTile();
             if (isGameOver()) showGameOver();
@@ -435,6 +437,7 @@ document.addEventListener("touchend", e => {
 
 /* запуск игры */
 function startNewGame() {
+    localStorage.removeItem("gameState");
     initGrid();
     score = 0;
     scoreEl.textContent = `Счёт: ${score}`;
@@ -447,9 +450,54 @@ function startNewGame() {
     leaderboardModal.classList.add("hidden");
 }
 
+/* сохраняем состояние игры в localStorage */
+function saveGameState() {
+    const snapshot = grid.map(row =>
+        row.map(tile => tile ? { value: tile.value } : null)
+    );
+
+    const state = {
+        grid: snapshot,
+        score: score,
+        history: history
+    };
+
+    localStorage.setItem("gameState", JSON.stringify(state));
+}
+
+/* загружаем сохранённое состояние */
+function loadGameState() {
+    const saved = JSON.parse(localStorage.getItem("gameState") || "null");
+    if (!saved) return false;
+
+    initGrid();
+
+    score = saved.score;
+    scoreEl.textContent = `Счёт: ${score}`;
+
+    history = saved.history || [];
+
+    tiles = [];
+    for (let i = 0; i < SIZE; i++) {
+        for (let j = 0; j < SIZE; j++) {
+            const cell = saved.grid[i][j];
+            if (cell) {
+                const t = createTile(cell.value, i, j);
+                grid[i][j] = t;
+            } else {
+                grid[i][j] = null;
+            }
+        }
+    }
+
+    return true;
+}
+
 createLayout();
 createModals();
-startNewGame();
+if (!loadGameState()) {
+    startNewGame();
+}
 
 window.addEventListener("resize", () => {
     tiles.forEach(t => setTilePosition(t, t.x, t.y));
