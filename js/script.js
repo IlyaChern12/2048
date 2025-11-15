@@ -192,7 +192,10 @@ function initGrid() {
 function createTile(value, x, y) {
     const tileEl = document.createElement("div");
     tileEl.className = "tile tile-" + value;
-    tileEl.textContent = value;
+    const inner = document.createElement("div");
+    inner.className = "tile-inner";
+    inner.textContent = value;
+    tileEl.appendChild(inner);
 
     const containerWidth = container.clientWidth;
     const gapRatio = 0.0165;
@@ -273,6 +276,8 @@ function undo() {
             }
         }
     }
+
+    saveGameState();
 }
 
 /* проверяем конец игры */
@@ -354,20 +359,38 @@ function move(dir) {
                 ny = ty;
                 moved = true;
             } else if (target.value === t.value && !merged[tx][ty]) {
+                // новое значение
                 t.value *= 2;
                 score += t.value;
                 scoreEl.textContent = `Счёт: ${score}`;
 
+                // обновляем классы цвета на внешней плитке
+                t.element.className = `tile tile-${t.value}`;
+
+                // обновляем текст
+                const inner = t.element.querySelector('.tile-inner');
+                inner.textContent = t.value;
+
+                inner.style.transform = "scale(0.93)";
+                setTimeout(() => {
+                    inner.style.transform = "";
+                    inner.classList.add("pulse");
+                }, 30);
+
+                // пульсация новой плитки
+                inner.classList.add("pulse");
+                setTimeout(() => inner.classList.remove("pulse"), 300);
+
+                // исчезновение старой поглощённой плитки
+                const targetInner = target.element.querySelector('.tile-inner');
+                targetInner.classList.add("fade-out");
+                targetInner.addEventListener("transitionend", () => {
+                    target.element.remove();
+                }, { once: true });
+
+                // обновляем сетку
                 grid[tx][ty] = t;
                 grid[nx][ny] = null;
-
-                t.element.textContent = t.value;
-                t.element.className = "tile tile-" + t.value;
-                t.element.classList.add("merge");
-
-                setTimeout(() => t.element.classList.remove("merge"), 200);
-
-                target.element.remove();
                 merged[tx][ty] = true;
 
                 nx = tx;
