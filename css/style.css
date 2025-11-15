@@ -66,11 +66,11 @@ body {
   background: #bbada0;
   padding: 10px;
   border-radius: 5px;
-  position: relative;
   display: grid;
-  gap: 10px;
+  gap: 10px; /* расстояние между ячейками */
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
+  position: relative; /* для absolute плиток */
 }
 
 .cell {
@@ -83,36 +83,21 @@ body {
 /* плитка */
 .tile {
   position: absolute;
-  width: calc((100% - 50px) / 4);
-  height: calc((100% - 50px) / 4);
+  width: calc((100% - 30px) / 4); /* 30px = gap*(SIZE-1) */
+  height: calc((100% - 30px) / 4);
   border-radius: 6px;
   display: flex;
   justify-content: center;
   align-items: center;
   font-weight: bold;
   font-size: clamp(28px, 6vw, 33px);
-  transition: transform 0.25s ease;
+  transition: transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+              background-color 0.3s, color 0.3s;
+  background-color: var(--tile-bg, #eee4da);
+  color: var(--tile-color, #776e65);
 }
 
-/* цвета плиток */
-.tile-2  { background: #eee4da; color: #776e65; }
-.tile-4  { background: #ede0c8; color: #776e65; }
-.tile-8  { background: #f2b179; color: #f9f6f2; }
-.tile-16 { background: #f59563; color: #f9f6f2; }
-.tile-32 { background: #f67c5f; color: #f9f6f2; }
-.tile-64 { background: #f65e3b; color: #f9f6f2; }
-.tile-128 { background: #edcf72; color: #f9f6f2; font-size: clamp(25px, 5vw, 30px); }
-.tile-256 { background: #edcc61; color: #f9f6f2; font-size: clamp(25px, 5vw, 30px); }
-.tile-512 { background: #edc850; color: #f9f6f2; font-size: clamp(25px, 5vw, 30px); }
-.tile-1024 { background: #edc53f; color: #f9f6f2; font-size: clamp(21px, 4.5vw, 26px); }
-.tile-2048 { background: #edc22e; color: #f9f6f2; font-size: clamp(21px, 4.5vw, 26px); }
-
-.tile {
-  position: absolute;
-  transition: transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1);
-  display: flex;
-}
-
+/* внутренний блок плитки для анимаций */
 .tile-inner {
   width: 100%;
   height: 100%;
@@ -122,10 +107,10 @@ body {
   align-items: center;
   font-weight: inherit;
   font-size: inherit;
-  background: inherit;
+  background-color: inherit;
   color: inherit;
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+              opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* исчезновение поглощённой плитки */
@@ -145,7 +130,6 @@ body {
 .tile-inner.pulse {
   animation: pulse-merge 0.28s ease-out;
 }
-
 
 /* нижние кнопки */
 .bottom-buttons {

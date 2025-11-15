@@ -119,16 +119,13 @@ function createModals() {
     leaderboardModal.appendChild(lbC);
     document.body.appendChild(leaderboardModal);
 
-    /* обработка сохранения результата */
     saveScoreBtn.addEventListener("click", () => {
         const name = playerNameInput.value.trim();
-
         if (!name) {
             playerNameInput.classList.add("error");
             playerNameInput.focus();
             return;
         }
-
         playerNameInput.classList.remove("error");
 
         const now = new Date();
@@ -138,7 +135,6 @@ function createModals() {
 
         const record = { name, score, date: formattedDate };
         const lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-
         lb.push(record);
         lb.sort((a, b) => b.score - a.score);
         localStorage.setItem("leaderboard", JSON.stringify(lb.slice(0, 10)));
@@ -148,9 +144,7 @@ function createModals() {
     });
 
     playerNameInput.addEventListener("input", () => {
-        if (playerNameInput.value.trim() !== "") {
-            playerNameInput.classList.remove("error");
-        }
+        if (playerNameInput.value.trim() !== "") playerNameInput.classList.remove("error");
     });
 
     restartBtn.addEventListener("click", () => {
@@ -158,14 +152,8 @@ function createModals() {
         startNewGame();
     });
 
-    closeLeaderboardBtn.addEventListener("click", () => {
-        leaderboardModal.classList.add("hidden");
-    });
-
-    document.getElementById("show-leaderboard").addEventListener("click", () => {
-        showLeaderboard();
-    });
-
+    closeLeaderboardBtn.addEventListener("click", () => leaderboardModal.classList.add("hidden"));
+    document.getElementById("show-leaderboard").addEventListener("click", showLeaderboard);
     document.getElementById("undo").addEventListener("click", undo);
     document.getElementById("new-game").addEventListener("click", startNewGame);
 }
@@ -188,14 +176,18 @@ function initGrid() {
     }
 }
 
-/* создаём плитку */
+/* создание плитки */
 function createTile(value, x, y) {
     const tileEl = document.createElement("div");
-    tileEl.className = "tile tile-" + value;
+    tileEl.className = "tile";
+
     const inner = document.createElement("div");
     inner.className = "tile-inner";
     inner.textContent = value;
     tileEl.appendChild(inner);
+
+    // установка цвета и шрифта
+    setTileStyle(tileEl, value);
 
     const containerWidth = container.clientWidth;
     const gapRatio = 0.0165;
@@ -217,15 +209,68 @@ function createTile(value, x, y) {
     return tile;
 }
 
-/* обновляем позицию плитки */
+/* обновление плитки после слияния */
+function updateTile(tile) {
+    const inner = tile.element.querySelector(".tile-inner");
+    inner.textContent = tile.value;
+    setTileStyle(tile.element, tile.value);
+}
+
+/* установка цвета и шрифта для плитки */
+function setTileStyle(tileEl, value) {
+    const inner = tileEl.querySelector(".tile-inner");
+
+    const colors = getTileColors(value);
+
+    if (value > 2048) {
+        const factor = Math.max(0.15, 1 - Math.log2(value / 2048) * 0.1);
+        tileEl.style.background = hexToRGBA(colors.bg, factor);
+
+        const fontBase = 26;
+        const fontSize = Math.max(16, fontBase - Math.log2(value / 2048) * 4);
+        inner.style.fontSize = `${fontSize}px`;
+        inner.style.color = colors.color;
+    } else {
+        tileEl.style.background = colors.bg;
+        inner.style.color = colors.color;
+        inner.style.fontSize = ""; // возвращаем к clamp
+    }
+}
+
+/* цвета плиток */
+function getTileColors(value) {
+    switch (value) {
+        case 2: return { bg: "#eee4da", color: "#776e65" };
+        case 4: return { bg: "#ede0c8", color: "#776e65" };
+        case 8: return { bg: "#f2b179", color: "#f9f6f2" };
+        case 16: return { bg: "#f59563", color: "#f9f6f2" };
+        case 32: return { bg: "#f67c5f", color: "#f9f6f2" };
+        case 64: return { bg: "#f65e3b", color: "#f9f6f2" };
+        case 128: return { bg: "#edcf72", color: "#f9f6f2" };
+        case 256: return { bg: "#edcc61", color: "#f9f6f2" };
+        case 512: return { bg: "#edc850", color: "#f9f6f2" };
+        case 1024: return { bg: "#edc53f", color: "#f9f6f2" };
+        case 2048: return { bg: "#edc22e", color: "#f9f6f2" };
+        default: return { bg: "#3c3a32", color: "#f9f6f2" }; // плитки >2048
+    }
+}
+
+/* hex -> rgba */
+function hexToRGBA(hex, alpha) {
+    hex = hex.replace("#", "");
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/* обновление позиции плитки */
 function setTilePosition(tile, x, y) {
     const containerWidth = container.clientWidth;
     const gap = containerWidth * 0.0165;
     const size = (containerWidth - gap * (SIZE + 1)) / SIZE;
-
     const tx = gap + y * (size + gap);
     const ty = gap + x * (size + gap);
-
     tile.element.style.width = `${size}px`;
     tile.element.style.height = `${size}px`;
     tile.element.style.transform = `translate(${tx}px, ${ty}px)`;
@@ -239,7 +284,6 @@ function addRandomTile() {
             if (!grid[i][j]) empty.push({ x: i, y: j });
 
     if (!empty.length) return;
-
     const { x, y } = empty[Math.floor(Math.random() * empty.length)];
     const tile = createTile(Math.random() < 0.9 ? 2 : 4, x, y);
     grid[x][y] = tile;
@@ -255,7 +299,6 @@ function saveHistory() {
 /* откат хода */
 function undo() {
     if (!history.length) return;
-
     const last = history.pop();
     score = last.score;
     scoreEl.textContent = `Счёт: ${score}`;
@@ -271,9 +314,7 @@ function undo() {
             if (cell) {
                 const tile = createTile(cell.value, i, j);
                 grid[i][j] = tile;
-            } else {
-                grid[i][j] = null;
-            }
+            } else grid[i][j] = null;
         }
     }
 
@@ -298,14 +339,14 @@ function showGameOver() {
     gameOverModal.classList.remove("hidden");
 }
 
-/* заполняем таблицу лидеров */
+/* показываем таблицу лидеров */
 function showLeaderboard() {
     const tbody = leaderboardTable.querySelector("tbody");
     tbody.innerHTML = "";
 
     const lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
 
-    if (lb.length === 0) {
+    if (!lb.length) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
         td.colSpan = 3;
@@ -331,72 +372,49 @@ function showLeaderboard() {
     leaderboardModal.classList.remove("hidden");
 }
 
-/* основная логика движения */
+/* движение плиток */
 function move(dir) {
     saveHistory();
-
     let moved = false;
     const merged = Array.from({ length: SIZE }, () => Array(SIZE).fill(false));
 
     function slide(x, y, dx, dy) {
         const t = grid[x][y];
         if (!t) return;
-
         let nx = x, ny = y;
 
         while (true) {
             const tx = nx + dx;
             const ty = ny + dy;
-
             if (tx < 0 || ty < 0 || tx >= SIZE || ty >= SIZE) break;
 
             const target = grid[tx][ty];
-
             if (!target) {
                 grid[tx][ty] = t;
                 grid[nx][ny] = null;
-                nx = tx;
-                ny = ty;
-                moved = true;
+                nx = tx; ny = ty; moved = true;
             } else if (target.value === t.value && !merged[tx][ty]) {
                 const targetInner = target.element.querySelector('.tile-inner');
                 const tInner = t.element.querySelector('.tile-inner');
 
-                // Верхняя плитка движется к нижней (позиция уже обновлена далее)
                 grid[tx][ty] = t;
                 grid[nx][ny] = null;
 
-                // Плавное исчезновение нижней плитки
                 targetInner.classList.add("fade-out");
                 targetInner.addEventListener("transitionend", () => {
                     target.element.remove();
-
-                    // Обновляем значение верхней плитки
                     t.value *= 2;
                     score += t.value;
                     scoreEl.textContent = `Счёт: ${score}`;
+                    updateTile(t);
 
-                    // Обновляем класс цвета плитки
-                    t.element.className = `tile tile-${t.value}`;
-
-                    // Обновляем текст
-                    tInner.textContent = t.value;
-
-                    // Пульсация новой плитки
                     tInner.style.transform = "scale(0.93)";
-                    setTimeout(() => {
-                        tInner.style.transform = "";
-                        tInner.classList.add("pulse");
-                    }, 30);
-
+                    setTimeout(() => { tInner.style.transform = ""; tInner.classList.add("pulse"); }, 30);
                     setTimeout(() => tInner.classList.remove("pulse"), 300);
-
                 }, { once: true });
 
                 merged[tx][ty] = true;
-                nx = tx;
-                ny = ty;
-                moved = true;
+                nx = tx; ny = ty; moved = true;
                 break;
             } else break;
         }
@@ -406,32 +424,24 @@ function move(dir) {
         t.y = ny;
     }
 
-    if (dir === "left")
-        for (let i = 0; i < SIZE; i++)
-            for (let j = 1; j < SIZE; j++) slide(i, j, 0, -1);
+    if (dir === "left") for (let i = 0; i < SIZE; i++) for (let j = 1; j < SIZE; j++) slide(i, j, 0, -1);
+    if (dir === "right") for (let i = 0; i < SIZE; i++) for (let j = SIZE - 2; j >= 0; j--) slide(i, j, 0, 1);
+    if (dir === "up") for (let j = 0; j < SIZE; j++) for (let i = 1; i < SIZE; i++) slide(i, j, -1, 0);
+    if (dir === "down") for (let j = 0; j < SIZE; j++) for (let i = SIZE - 2; i >= 0; i--) slide(i, j, 1, 0);
 
-    if (dir === "right")
-        for (let i = 0; i < SIZE; i++)
-            for (let j = SIZE - 2; j >= 0; j--) slide(i, j, 0, 1);
+    // Добавляем плитку только если было движение
+    if (moved) addRandomTile();
 
-    if (dir === "up")
-        for (let j = 0; j < SIZE; j++)
-            for (let i = 1; i < SIZE; i++) slide(i, j, -1, 0);
-
-    if (dir === "down")
-        for (let j = 0; j < SIZE; j++)
-            for (let i = SIZE - 2; i >= 0; i--) slide(i, j, 1, 0);
-
-    if (moved) {
-        saveGameState();
-        requestAnimationFrame(() => {
-            addRandomTile();
-            if (isGameOver()) showGameOver();
-        });
+    // Проверяем конец игры всегда
+    if (isGameOver()) {
+        showGameOver();
     }
+
+    if (moved) saveGameState();
 }
 
-/* обработка управления */
+
+/* управление клавишами */
 document.addEventListener("keydown", e => {
     if (e.key === "ArrowUp") move("up");
     if (e.key === "ArrowDown") move("down");
@@ -441,22 +451,12 @@ document.addEventListener("keydown", e => {
 
 /* свайпы */
 let startX = 0, startY = 0;
-document.addEventListener("touchstart", e => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-});
-
+document.addEventListener("touchstart", e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; });
 document.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 20) move("right");
-        if (dx < -20) move("left");
-    } else {
-        if (dy > 20) move("down");
-        if (dy < -20) move("up");
-    }
+    if (Math.abs(dx) > Math.abs(dy)) { if (dx > 20) move("right"); if (dx < -20) move("left"); }
+    else { if (dy > 20) move("down"); if (dy < -20) move("up"); }
 });
 
 /* запуск игры */
@@ -466,63 +466,41 @@ function startNewGame() {
     score = 0;
     scoreEl.textContent = `Счёт: ${score}`;
     history = [];
-
     addRandomTile();
     addRandomTile();
-
     gameOverModal.classList.add("hidden");
     leaderboardModal.classList.add("hidden");
 }
 
-/* сохраняем состояние игры в localStorage */
+/* сохраняем состояние игры */
 function saveGameState() {
-    const snapshot = grid.map(row =>
-        row.map(tile => tile ? { value: tile.value } : null)
-    );
-
-    const state = {
-        grid: snapshot,
-        score: score,
-        history: history
-    };
-
+    const snapshot = grid.map(row => row.map(tile => tile ? { value: tile.value } : null));
+    const state = { grid: snapshot, score, history };
     localStorage.setItem("gameState", JSON.stringify(state));
 }
 
-/* загружаем сохранённое состояние */
+/* загружаем состояние */
 function loadGameState() {
     const saved = JSON.parse(localStorage.getItem("gameState") || "null");
     if (!saved) return false;
 
     initGrid();
-
     score = saved.score;
     scoreEl.textContent = `Счёт: ${score}`;
-
     history = saved.history || [];
-
     tiles = [];
     for (let i = 0; i < SIZE; i++) {
         for (let j = 0; j < SIZE; j++) {
             const cell = saved.grid[i][j];
-            if (cell) {
-                const t = createTile(cell.value, i, j);
-                grid[i][j] = t;
-            } else {
-                grid[i][j] = null;
-            }
+            if (cell) { const t = createTile(cell.value, i, j); grid[i][j] = t; }
+            else grid[i][j] = null;
         }
     }
-
     return true;
 }
 
 createLayout();
 createModals();
-if (!loadGameState()) {
-    startNewGame();
-}
+if (!loadGameState()) startNewGame();
 
-window.addEventListener("resize", () => {
-    tiles.forEach(t => setTilePosition(t, t.x, t.y));
-});
+window.addEventListener("resize", () => { tiles.forEach(t => setTilePosition(t, t.x, t.y)); });
