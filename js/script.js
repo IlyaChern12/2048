@@ -164,7 +164,7 @@ function createModals() {
 /* создаём сетку */
 function initGrid() {
     grid = [];
-    container.innerHTML = "";
+    while (container.firstChild) container.removeChild(container.firstChild);
     tiles.forEach(t => t.element.remove());
     tiles = [];
 
@@ -517,7 +517,7 @@ window.addEventListener("resize", () => { tiles.forEach(t => setTilePosition(t, 
 
 function showLeaderboard() {
     const tbody = leaderboardTable.querySelector("tbody");
-    tbody.innerHTML = "";
+    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
     const lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
     if (!lb.length) {
         const tr = document.createElement("tr");
