@@ -274,6 +274,10 @@ function setTilePosition(tile, x, y) {
     tile.element.style.width = `${size}px`;
     tile.element.style.height = `${size}px`;
     tile.element.style.transform = `translate(${tx}px, ${ty}px)`;
+
+    if (checkGameOverWithDelay(500)) {
+        showGameOver();
+    }
 }
 
 /* добавление новой плитки */
@@ -287,6 +291,11 @@ function addRandomTile() {
     const { x, y } = empty[Math.floor(Math.random() * empty.length)];
     const tile = createTile(Math.random() < 0.9 ? 2 : 4, x, y);
     grid[x][y] = tile;
+
+    if (checkGameOverWithDelay(500)) {
+        showGameOver();
+    }
+
     saveGameState();
 }
 
@@ -323,13 +332,46 @@ function undo() {
 
 /* проверяем конец игры */
 function isGameOver() {
-    for (let i = 0; i < SIZE; i++)
+    for (let i = 0; i < SIZE; i++) {
         for (let j = 0; j < SIZE; j++) {
-            if (!grid[i][j]) return false;
-            if (i < SIZE - 1 && grid[i][j].value === grid[i + 1][j]?.value) return false;
-            if (j < SIZE - 1 && grid[i][j].value === grid[i][j + 1]?.value) return false;
+            const tile = grid[i][j];
+
+            // Если есть пустая клетка — игра не закончена
+            if (!tile) return false;
+
+            const value = tile.value;
+
+            // Проверяем соседей только в пределах сетки
+            if (i > 0) {
+                const up = grid[i - 1][j];
+                if (up && up.value === value) return false;
+            }
+            if (i < SIZE - 1) {
+                const down = grid[i + 1][j];
+                if (down && down.value === value) return false;
+            }
+            if (j > 0) {
+                const left = grid[i][j - 1];
+                if (left && left.value === value) return false;
+            }
+            if (j < SIZE - 1) {
+                const right = grid[i][j + 1];
+                if (right && right.value === value) return false;
+            }
         }
+    }
+
+    // Нет пустых клеток и ходов для слияния — игра окончена
     return true;
+}
+
+function checkGameOverWithDelay(delay = 350) {
+    // Проверяем после задержки, чтобы завершились все анимации слияний
+    setTimeout(() => {
+        if (isGameOver()) {
+            showGameOver();
+        }
+    }, delay);
 }
 
 /* показываем модалку */
@@ -375,6 +417,11 @@ function showLeaderboard() {
 /* движение плиток */
 function move(dir) {
     saveHistory();
+
+    // Проверяем конец игры всегда
+    if (checkGameOverWithDelay(500)) {
+        showGameOver();
+    }
     let moved = false;
     const merged = Array.from({ length: SIZE }, () => Array(SIZE).fill(false));
 
@@ -433,7 +480,7 @@ function move(dir) {
     if (moved) addRandomTile();
 
     // Проверяем конец игры всегда
-    if (isGameOver()) {
+    if (checkGameOverWithDelay(500)) {
         showGameOver();
     }
 
