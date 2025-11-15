@@ -4,6 +4,7 @@ let grid = [];
 let tiles = [];
 let score = 0;
 let history = [];
+let gameEnded = false;
 
 let container;
 let scoreEl;
@@ -186,7 +187,6 @@ function createTile(value, x, y) {
     inner.textContent = value;
     tileEl.appendChild(inner);
 
-    // установка цвета и шрифта
     setTileStyle(tileEl, value);
 
     const containerWidth = container.clientWidth;
@@ -209,23 +209,19 @@ function createTile(value, x, y) {
     return tile;
 }
 
-/* обновление плитки после слияния */
 function updateTile(tile) {
     const inner = tile.element.querySelector(".tile-inner");
     inner.textContent = tile.value;
     setTileStyle(tile.element, tile.value);
 }
 
-/* установка цвета и шрифта для плитки */
 function setTileStyle(tileEl, value) {
     const inner = tileEl.querySelector(".tile-inner");
-
     const colors = getTileColors(value);
 
     if (value > 2048) {
         const factor = Math.max(0.15, 1 - Math.log2(value / 2048) * 0.1);
         tileEl.style.background = hexToRGBA(colors.bg, factor);
-
         const fontBase = 26;
         const fontSize = Math.max(16, fontBase - Math.log2(value / 2048) * 4);
         inner.style.fontSize = `${fontSize}px`;
@@ -233,11 +229,10 @@ function setTileStyle(tileEl, value) {
     } else {
         tileEl.style.background = colors.bg;
         inner.style.color = colors.color;
-        inner.style.fontSize = ""; // возвращаем к clamp
+        inner.style.fontSize = "";
     }
 }
 
-/* цвета плиток */
 function getTileColors(value) {
     switch (value) {
         case 2: return { bg: "#eee4da", color: "#776e65" };
@@ -251,11 +246,10 @@ function getTileColors(value) {
         case 512: return { bg: "#edc850", color: "#f9f6f2" };
         case 1024: return { bg: "#edc53f", color: "#f9f6f2" };
         case 2048: return { bg: "#edc22e", color: "#f9f6f2" };
-        default: return { bg: "#3c3a32", color: "#f9f6f2" }; // плитки >2048
+        default: return { bg: "#3c3a32", color: "#f9f6f2" };
     }
 }
 
-/* hex -> rgba */
 function hexToRGBA(hex, alpha) {
     hex = hex.replace("#", "");
     const r = parseInt(hex.substring(0, 2), 16);
@@ -264,7 +258,6 @@ function hexToRGBA(hex, alpha) {
     return `rgba(${r},${g},${b},${alpha})`;
 }
 
-/* обновление позиции плитки */
 function setTilePosition(tile, x, y) {
     const containerWidth = container.clientWidth;
     const gap = containerWidth * 0.0165;
@@ -274,14 +267,11 @@ function setTilePosition(tile, x, y) {
     tile.element.style.width = `${size}px`;
     tile.element.style.height = `${size}px`;
     tile.element.style.transform = `translate(${tx}px, ${ty}px)`;
-
-    if (checkGameOverWithDelay(500)) {
-        showGameOver();
-    }
 }
 
 /* добавление новой плитки */
 function addRandomTile() {
+    if (gameEnded) return; // блокируем после окончания игры
     const empty = [];
     for (let i = 0; i < SIZE; i++)
         for (let j = 0; j < SIZE; j++)
@@ -291,10 +281,6 @@ function addRandomTile() {
     const { x, y } = empty[Math.floor(Math.random() * empty.length)];
     const tile = createTile(Math.random() < 0.9 ? 2 : 4, x, y);
     grid[x][y] = tile;
-
-    if (checkGameOverWithDelay(500)) {
-        showGameOver();
-    }
 
     saveGameState();
 }
@@ -307,7 +293,7 @@ function saveHistory() {
 
 /* откат хода */
 function undo() {
-    if (!history.length) return;
+    if (!history.length || gameEnded) return;
     const last = history.pop();
     score = last.score;
     scoreEl.textContent = `Счёт: ${score}`;
@@ -330,100 +316,65 @@ function undo() {
     saveGameState();
 }
 
-/* проверяем конец игры */
+/* проверка конца игры */
 function isGameOver() {
-    for (let i = 0; i < SIZE; i++) {
-        for (let j = 0; j < SIZE; j++) {
-            const tile = grid[i][j];
+    if (gameEnded) return true;
 
-            // Если есть пустая клетка — игра не закончена
-            if (!tile) return false;
+    for (let i = 0; i < SIZE; i++)
+        for (let j = 0; j < SIZE; j++)
+            if (!grid[i][j]) return false;
 
-            const value = tile.value;
-
-            // Проверяем соседей только в пределах сетки
-            if (i > 0) {
-                const up = grid[i - 1][j];
-                if (up && up.value === value) return false;
-            }
-            if (i < SIZE - 1) {
-                const down = grid[i + 1][j];
-                if (down && down.value === value) return false;
-            }
-            if (j > 0) {
-                const left = grid[i][j - 1];
-                if (left && left.value === value) return false;
-            }
-            if (j < SIZE - 1) {
-                const right = grid[i][j + 1];
-                if (right && right.value === value) return false;
-            }
-        }
+    const directions = ["up", "down", "left", "right"];
+    for (const dir of directions) {
+        const copyGrid = grid.map(row => row.map(t => t ? { value: t.value } : null));
+        if (canMove(dir, copyGrid)) return false;
     }
 
-    // Нет пустых клеток и ходов для слияния — игра окончена
     return true;
 }
 
-function checkGameOverWithDelay(delay = 350) {
-    // Проверяем после задержки, чтобы завершились все анимации слияний
-    setTimeout(() => {
-        if (isGameOver()) {
-            showGameOver();
+function canMove(dir, testGrid) {
+    for (let i = 0; i < SIZE; i++) {
+        for (let j = 0; j < SIZE; j++) {
+            const t = testGrid[i][j];
+            if (!t) continue;
+            if (dir === "left" && j > 0) {
+                const neighbor = testGrid[i][j - 1];
+                if (!neighbor || neighbor.value === t.value) return true;
+            }
+            if (dir === "right" && j < SIZE - 1) {
+                const neighbor = testGrid[i][j + 1];
+                if (!neighbor || neighbor.value === t.value) return true;
+            }
+            if (dir === "up" && i > 0) {
+                const neighbor = testGrid[i - 1][j];
+                if (!neighbor || neighbor.value === t.value) return true;
+            }
+            if (dir === "down" && i < SIZE - 1) {
+                const neighbor = testGrid[i + 1][j];
+                if (!neighbor || neighbor.value === t.value) return true;
+            }
         }
-    }, delay);
+    }
+    return false;
 }
 
-/* показываем модалку */
+
 function showGameOver() {
+    gameEnded = true;
     gameOverMessage.textContent = `Игра окончена! Ваш счёт: ${score}`;
     playerNameInput.value = "";
     gameOverModal.classList.remove("hidden");
 }
 
-/* показываем таблицу лидеров */
-function showLeaderboard() {
-    const tbody = leaderboardTable.querySelector("tbody");
-    tbody.innerHTML = "";
-
-    const lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-
-    if (!lb.length) {
-        const tr = document.createElement("tr");
-        const td = document.createElement("td");
-        td.colSpan = 3;
-        td.style.whiteSpace = "normal";
-        td.style.width = "200px";
-        td.textContent = "Лидеров пока нет. Сыграйте и станьте первым!";
-        td.style.textAlign = "center";
-        td.style.padding = "15px 0 9px 0";
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-    } else {
-        lb.forEach(r => {
-            const tr = document.createElement("tr");
-            ["name", "score", "date"].forEach(key => {
-                const td = document.createElement("td");
-                td.textContent = r[key];
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-        });
-    }
-
-    leaderboardModal.classList.remove("hidden");
-}
-
 /* движение плиток */
 function move(dir) {
-    saveHistory();
+    if (gameEnded) return;
 
-    // Проверяем конец игры всегда
-    if (checkGameOverWithDelay(500)) {
-        showGameOver();
-    }
+    saveHistory();
     let moved = false;
     const merged = Array.from({ length: SIZE }, () => Array(SIZE).fill(false));
+    const animations = [];
 
     function slide(x, y, dx, dy) {
         const t = grid[x][y];
@@ -441,26 +392,32 @@ function move(dir) {
                 grid[nx][ny] = null;
                 nx = tx; ny = ty; moved = true;
             } else if (target.value === t.value && !merged[tx][ty]) {
-                const targetInner = target.element.querySelector('.tile-inner');
-                const tInner = t.element.querySelector('.tile-inner');
+                if (!gameEnded) {
+                    grid[tx][ty] = t;
+                    grid[nx][ny] = null;
 
-                grid[tx][ty] = t;
-                grid[nx][ny] = null;
+                    const targetInner = target.element.querySelector('.tile-inner');
+                    const tInner = t.element.querySelector('.tile-inner');
 
-                targetInner.classList.add("fade-out");
-                targetInner.addEventListener("transitionend", () => {
-                    target.element.remove();
-                    t.value *= 2;
-                    score += t.value;
-                    scoreEl.textContent = `Счёт: ${score}`;
-                    updateTile(t);
+                    const anim = new Promise(resolve => {
+                        targetInner.classList.add("fade-out");
+                        targetInner.addEventListener("transitionend", () => {
+                            target.element.remove();
+                            t.value *= 2;
+                            score += t.value;
+                            scoreEl.textContent = `Счёт: ${score}`;
+                            updateTile(t);
 
-                    tInner.style.transform = "scale(0.93)";
-                    setTimeout(() => { tInner.style.transform = ""; tInner.classList.add("pulse"); }, 30);
-                    setTimeout(() => tInner.classList.remove("pulse"), 300);
-                }, { once: true });
+                            tInner.style.transform = "scale(0.93)";
+                            setTimeout(() => { tInner.style.transform = ""; tInner.classList.add("pulse"); }, 30);
+                            setTimeout(() => tInner.classList.remove("pulse"), 300);
+                            resolve();
+                        }, { once: true });
+                    });
 
-                merged[tx][ty] = true;
+                    animations.push(anim);
+                    merged[tx][ty] = true;
+                }
                 nx = tx; ny = ty; moved = true;
                 break;
             } else break;
@@ -476,15 +433,18 @@ function move(dir) {
     if (dir === "up") for (let j = 0; j < SIZE; j++) for (let i = 1; i < SIZE; i++) slide(i, j, -1, 0);
     if (dir === "down") for (let j = 0; j < SIZE; j++) for (let i = SIZE - 2; i >= 0; i--) slide(i, j, 1, 0);
 
-    // Добавляем плитку только если было движение
     if (moved) addRandomTile();
 
-    // Проверяем конец игры всегда
-    if (checkGameOverWithDelay(500)) {
-        showGameOver();
+    // Проверка конца игры
+    if (animations.length > 0) {
+        Promise.all(animations).then(() => {
+            if (isGameOver()) showGameOver();
+            if (moved) saveGameState();
+        });
+    } else {
+        if (isGameOver()) showGameOver();
+        if (moved) saveGameState();
     }
-
-    if (moved) saveGameState();
 }
 
 
@@ -513,6 +473,7 @@ function startNewGame() {
     score = 0;
     scoreEl.textContent = `Счёт: ${score}`;
     history = [];
+    gameEnded = false;
     addRandomTile();
     addRandomTile();
     gameOverModal.classList.add("hidden");
@@ -549,5 +510,30 @@ function loadGameState() {
 createLayout();
 createModals();
 if (!loadGameState()) startNewGame();
-
 window.addEventListener("resize", () => { tiles.forEach(t => setTilePosition(t, t.x, t.y)); });
+
+function showLeaderboard() {
+    const tbody = leaderboardTable.querySelector("tbody");
+    tbody.innerHTML = "";
+    const lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+    if (!lb.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 3;
+        td.style.textAlign = "center";
+        td.textContent = "Лидеров пока нет. Сыграйте и станьте первым!";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+    } else {
+        lb.forEach(r => {
+            const tr = document.createElement("tr");
+            ["name", "score", "date"].forEach(key => {
+                const td = document.createElement("td");
+                td.textContent = r[key];
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+    leaderboardModal.classList.remove("hidden");
+}
